@@ -452,3 +452,21 @@ func (ds *dockerService) getDockerVersionFromCache() (*dockertypes.Version, erro
 	}
 	return dv, nil
 }
+
+func (ds *dockerService) ListPodSandboxStats(
+	ctx context.Context,
+	r *runtimeapi.ListPodSandboxStatsRequest,
+) (*runtimeapi.ListPodSandboxStatsResponse, error) {
+
+	// TBD
+	return &runtimeapi.ListPodSandboxStatsResponse{}, nil
+}
+
+func (ds *dockerService) PodSandboxStats(
+	ctx context.Context,
+	r *runtimeapi.PodSandboxStatsRequest,
+) (*runtimeapi.PodSandboxStatsResponse, error) {
+
+	// TBD
+	return &runtimeapi.PodSandboxStatsResponse{}, nil
+}

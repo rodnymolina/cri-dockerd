@@ -31,7 +31,6 @@ import (
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	iptablesproxy "k8s.io/kubernetes/pkg/proxy/iptables"
 	"k8s.io/kubernetes/pkg/util/conntrack"
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
 	"k8s.io/utils/exec"
@@ -150,11 +149,15 @@ func (hm *hostportManager) Add(
 			"-j", string(chain),
 		)
 
+		// TODO: Needs review/adjustment. I'm commenting this instruction out coz 'KubeMarMasq'
+		// type is not present in K8s v1.25.3 apis. More details here:
+		// https://kubernetes.io/blog/2022/09/07/iptables-chains-not-api/
+		//
 		// SNAT if the traffic comes from the pod itself
-		writeLine(natRules, "-A", string(chain),
-			"-m", "comment", "--comment", fmt.Sprintf(`"%s hostport %d"`, podFullName, pm.HostPort),
-			"-s", podIP,
-			"-j", string(iptablesproxy.KubeMarkMasqChain))
+		// writeLine(natRules, "-A", string(chain),
+		// 	"-m", "comment", "--comment", fmt.Sprintf(`"%s hostport %d"`, podFullName, pm.HostPort),
+		// 	"-s", podIP,
+		// 	"-j", string(iptablesproxy.KubeMarkMasqChain))
 
 		// DNAT to the podIP:containerPort
 		hostPortBinding := net.JoinHostPort(podIP, strconv.Itoa(int(pm.ContainerPort)))
@@ -422,7 +425,8 @@ func getExistingHostportIPTablesRules(
 	if err != nil { // if we failed to get any rules
 		return nil, nil, fmt.Errorf("failed to execute iptables-save: %v", err)
 	}
-	existingNATChains := utiliptables.GetChainLines(utiliptables.TableNAT, iptablesData.Bytes())
+	//existingNATChains := utiliptables.GetChainLines(utiliptables.TableNAT, iptablesData.Bytes())
+	existingNATChains := utiliptables.GetChainsFromTable(iptablesData.Bytes())
 
 	existingHostportChains := make(map[utiliptables.Chain]string)
 	existingHostportRules := []string{}
@@ -430,7 +434,7 @@ func getExistingHostportIPTablesRules(
 	for chain := range existingNATChains {
 		if strings.HasPrefix(string(chain), string(kubeHostportsChain)) ||
 			strings.HasPrefix(string(chain), kubeHostportChainPrefix) {
-			existingHostportChains[chain] = string(existingNATChains[chain])
+			existingHostportChains[chain] = string(chain)
 		}
 	}
 

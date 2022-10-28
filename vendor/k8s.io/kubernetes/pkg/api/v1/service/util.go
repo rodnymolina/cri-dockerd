@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	utilnet "k8s.io/utils/net"
 )
 
@@ -67,8 +67,8 @@ func GetLoadBalancerSourceRanges(service *v1.Service) (utilnet.IPNetSet, error) 
 	return ipnets, nil
 }
 
-// RequestsOnlyLocalTraffic checks if service requests OnlyLocal traffic.
-func RequestsOnlyLocalTraffic(service *v1.Service) bool {
+// ExternalPolicyLocal checks if service has ETP = Local.
+func ExternalPolicyLocal(service *v1.Service) bool {
 	if service.Spec.Type != v1.ServiceTypeLoadBalancer &&
 		service.Spec.Type != v1.ServiceTypeNodePort {
 		return false
@@ -76,22 +76,18 @@ func RequestsOnlyLocalTraffic(service *v1.Service) bool {
 	return service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal
 }
 
+// InternalPolicyLocal checks if service has ITP = Local.
+func InternalPolicyLocal(service *v1.Service) bool {
+	if service.Spec.InternalTrafficPolicy == nil {
+		return false
+	}
+	return *service.Spec.InternalTrafficPolicy == v1.ServiceInternalTrafficPolicyLocal
+}
+
 // NeedsHealthCheck checks if service needs health check.
 func NeedsHealthCheck(service *v1.Service) bool {
 	if service.Spec.Type != v1.ServiceTypeLoadBalancer {
 		return false
 	}
-	return RequestsOnlyLocalTraffic(service)
-}
-
-// GetServiceHealthCheckPathPort returns the path and nodePort programmed into the Cloud LB Health Check
-func GetServiceHealthCheckPathPort(service *v1.Service) (string, int32) {
-	if !NeedsHealthCheck(service) {
-		return "", 0
-	}
-	port := service.Spec.HealthCheckNodePort
-	if port == 0 {
-		return "", 0
-	}
-	return "/healthz", port
+	return ExternalPolicyLocal(service)
 }
